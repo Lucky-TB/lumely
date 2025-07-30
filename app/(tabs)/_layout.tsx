@@ -1,45 +1,56 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
+import { useMemo } from 'react';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+interface TabConfig {
+  name: string;
+  title: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+}
+
+const TAB_CONFIGS: TabConfig[] = [
+  { name: 'index', title: 'Home', iconName: 'home' },
+  { name: 'health-log', title: 'Health Log', iconName: 'medical' },
+  { name: 'chat', title: 'Chat', iconName: 'chatbubble' },
+  { name: 'profile', title: 'Profile', iconName: 'person' },
+];
+
+const TAB_BAR_STYLE = {
+  backgroundColor: '#FAF9F6', // Background - Off-White
+  borderTopWidth: 1,
+  borderTopColor: '#E5E7EB',
+  paddingBottom: 8,
+  paddingTop: 8,
+  height: 88,
+} as const;
+
+const SCREEN_OPTIONS = {
+  tabBarActiveTintColor: '#457B9D', // Secondary - Muted Indigo
+  tabBarInactiveTintColor: '#9CA3AF',
+  tabBarStyle: TAB_BAR_STYLE,
+  headerShown: false,
+} as const;
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const tabScreens = useMemo(() => 
+    TAB_CONFIGS.map(({ name, title, iconName }) => (
+      <Tabs.Screen
+        key={name}
+        name={name}
+        options={{
+          title,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name={iconName} size={size} color={color} />
+          ),
+        }}
+      />
+    )), 
+    []
+  );
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
+    <Tabs screenOptions={SCREEN_OPTIONS}>
+      {tabScreens}
     </Tabs>
   );
 }

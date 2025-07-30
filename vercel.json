@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "functions": {
+    "api/teachable-machine.js": {
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/teachable-machine",
+      "dest": "/api/teachable-machine.js"
+    }
+  ]
+} 
