@@ -127,7 +127,7 @@ export async function analyzeHealthImage(
   bodyPart: keyof typeof HEALTH_PROMPTS
 ): Promise<HealthAnalysisResult> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-vision' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
     
     const prompt = HEALTH_PROMPTS[bodyPart];
     const imageData = {
@@ -172,7 +172,7 @@ export async function generateWellnessRecommendations(
   healthHistory: any[]
 ): Promise<string[]> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
     
     const prompt = `Based on the user's ${bodyPart} health history, generate 3-5 personalized wellness recommendations. 
     Focus on practical, actionable advice for maintaining or improving ${bodyPart} health.`;

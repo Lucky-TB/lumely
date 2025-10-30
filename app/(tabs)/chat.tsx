@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -14,6 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { auth } from '../../lib/firebase';
 
 interface ChatMessage {
   id: string;
@@ -35,6 +37,7 @@ export default function ChatScreen() {
   const [loading, setLoading] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [bypassed, setBypassed] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const quickQuestions = [
@@ -44,16 +47,10 @@ export default function ChatScreen() {
     'How to maintain good dental hygiene?',
   ];
 
-  // Test API connection on component mount
-  useEffect(() => {
-    testApiConnection();
-  }, []);
-
   const testApiConnection = async () => {
     const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     console.log('Testing API connection...');
     console.log('API Key exists:', !!apiKey);
-    
     if (!apiKey) {
       console.error('No API key found');
       return;
@@ -61,27 +58,62 @@ export default function ChatScreen() {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      
-      // Test different model names
-      const modelNames = ['gemini-1.5-pro', 'gemini-pro', 'gemini-1.0-pro'];
-      
-      for (const modelName of modelNames) {
-        try {
-          console.log(`Testing model: ${modelName}`);
-          const model = genAI.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent('Say "Hello"');
-          const response = await result.response;
-          const text = response.text();
-          console.log(`✅ Model ${modelName} works:`, text);
-          break; // Use the first working model
-        } catch (error) {
-          console.log(`❌ Model ${modelName} failed:`, error.message);
-        }
-      }
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const result = await model.generateContent('Say "Hello"');
+      const response = await result.response;
+      const text = response.text();
+      console.log(`✅ Model replied:`, text);
     } catch (error) {
       console.error('API test failed:', error);
     }
   };
+
+  const scrollToBottom = () => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  };
+
+  // Test API connection on component mount
+  useEffect(() => {
+    testApiConnection();
+  }, []);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Check if user is authenticated or has bypassed
+  const user = auth.currentUser;
+  if (!user && !bypassed) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.authContainer}>
+          <View style={styles.authContent}>
+            <View style={styles.authIconContainer}>
+              <Ionicons name="chatbubble" size={80} color="#457B9D" />
+            </View>
+            <Text style={styles.authTitle}>Welcome to AI Chat</Text>
+            <Text style={styles.authSubtitle}>
+              Sign in to chat with your AI health assistant and get personalized health advice
+            </Text>
+            <TouchableOpacity
+              style={styles.authButton}
+              onPress={() => router.push('/(auth)')}
+            >
+              <Ionicons name="log-in" size={20} color="white" style={styles.authButtonIcon} />
+              <Text style={styles.authButtonText}>Sign In to Continue</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bypassButton}
+              onPress={() => setBypassed(true)}
+            >
+              <Text style={styles.bypassText}>Continue without signing in</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
@@ -117,20 +149,11 @@ export default function ChatScreen() {
 
   const getGeminiResponse = async (question: string): Promise<string> => {
     const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('No API key found');
-    }
+    if (!apiKey) throw new Error('No API key found');
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-    const prompt = `You are a helpful health assistant. Answer the following health-related question in a clear, informative, and supportive way. Keep your response concise but helpful:
-
-Question: ${question}
-
-Please provide a helpful response:`;
-
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const prompt = `You are a helpful health assistant. Answer the following health-related question in a clear, informative, and supportive way. Keep your response concise but helpful:\n\nQuestion: ${question}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text();
@@ -140,14 +163,6 @@ Please provide a helpful response:`;
     setInputText(question);
     sendMessage(question);
   };
-
-  const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -463,5 +478,75 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FDF6EE',
+    paddingHorizontal: 40,
+  },
+  authContent: {
+    alignItems: 'center',
+    maxWidth: 300,
+  },
+  authIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  authTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#222',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  authSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  authButton: {
+    backgroundColor: '#457B9D',
+    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  authButtonIcon: {
+    marginRight: 8,
+  },
+  authButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bypassButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  bypassText: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    textAlign: 'center',
   },
 }); 

@@ -2,12 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 interface AICheckItem {
@@ -52,25 +52,9 @@ const AI_CHECKS: AICheckItem[] = [
     color: '#A8DADC',
   },
   {
-    id: 'hair',
-    label: 'Hair',
-    desc: 'Check signs',
-    icon: 'cut',
-    bodyPart: 'hair',
-    color: '#9B59B6',
-  },
-  {
-    id: 'nails',
-    label: 'Nails',
-    desc: 'Check signs',
-    icon: 'finger-print',
-    bodyPart: 'nails',
-    color: '#E74C3C',
-  },
-  {
     id: 'skin',
     label: 'Skin',
-    desc: 'Face, Arms, Legs',
+    desc: 'Check signs',
     icon: 'color-palette',
     bodyPart: 'skin',
     color: '#2ECC71',
@@ -158,22 +142,30 @@ function CardGrid() {
   }, []);
 
   const skinItem = useMemo(() => AI_CHECKS.find(item => item.id === 'skin')!, []);
-  const regularItems = useMemo(() => AI_CHECKS.filter(item => item.id !== 'skin'), []);
+  const eyeItem = useMemo(() => AI_CHECKS.find(item => item.id === 'eye')!, []);
+  const faceItem = useMemo(() => AI_CHECKS.find(item => item.id === 'face')!, []);
+  const teethItem = useMemo(() => AI_CHECKS.find(item => item.id === 'teeth')!, []);
+  const earsItem = useMemo(() => AI_CHECKS.find(item => item.id === 'ears')!, []);
 
   return (
     <View style={styles.cardGrid}>
-      <View style={styles.cardRow}>
-        <SkinCard item={skinItem} onPress={() => handleCardPress(skinItem.bodyPart)} />
-        <AICheckCard item={regularItems[0]} onPress={() => handleCardPress(regularItems[0].bodyPart)} />
-        <AICheckCard item={regularItems[1]} onPress={() => handleCardPress(regularItems[1].bodyPart)} />
+      {/* Top Section */}
+      <View style={styles.topSection}>
+        <View style={styles.topRow}>
+          <View style={styles.leftColumn}>
+            <SkinCard item={skinItem} onPress={() => handleCardPress(skinItem.bodyPart)} />
+          </View>
+          <View style={styles.rightColumn}>
+            <AICheckCard item={faceItem} onPress={() => handleCardPress(faceItem.bodyPart)} style={styles.smallCard} />
+            <AICheckCard item={earsItem} onPress={() => handleCardPress(earsItem.bodyPart)} style={styles.lastSmallCard} />
+          </View>
+        </View>
       </View>
-      <View style={styles.cardRow}>
-        <AICheckCard item={regularItems[2]} onPress={() => handleCardPress(regularItems[2].bodyPart)} />
-        <AICheckCard item={regularItems[3]} onPress={() => handleCardPress(regularItems[3].bodyPart)} />
-      </View>
-      <View style={styles.cardRow}>
-        <AICheckCard item={regularItems[4]} onPress={() => handleCardPress(regularItems[4].bodyPart)} />
-        <AICheckCard item={regularItems[5]} onPress={() => handleCardPress(regularItems[5].bodyPart)} />
+      
+      {/* Bottom Section - Completely Separated */}
+      <View style={styles.bottomSection}>
+        <AICheckCard item={eyeItem} onPress={() => handleCardPress(eyeItem.bodyPart)} style={styles.bottomCard} />
+        <AICheckCard item={teethItem} onPress={() => handleCardPress(teethItem.bodyPart)} style={styles.bottomLastCard} />
       </View>
     </View>
   );
@@ -215,7 +207,6 @@ export default function HomeScreen() {
         <SectionHeader />
         <CardGrid />
         <HistoryCard />
-        <InfoCard />
       </ScrollView>
     </SafeAreaView>
   );
@@ -234,7 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
-    marginBottom: 12,
+    marginBottom: 15,
   },
   profileIcon: {
     marginRight: 12,
@@ -298,9 +289,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 12,
   },
-  cardRow: {
+  topSection: {
+    marginBottom: 0,
+    marginTop: 5,
+  },
+  bottomSection: {
+    flexDirection: 'column',
+    marginTop: 20,
+  },
+  topRow: {
     flexDirection: 'row',
+  },
+  leftColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  rightColumn: {
+    flex: 1,
+    marginLeft: 20,
+  },
+  bottomCard: {
     marginBottom: 12,
+    height: 80,
+  },
+  bottomLastCard: {
+    height: 80,
+    marginBottom: 10,
   },
   aiCard: {
     flex: 1,
@@ -315,27 +329,38 @@ const styles = StyleSheet.create({
     minHeight: 100,
     justifyContent: 'space-between',
   },
+  smallCard: {
+    marginBottom: 20,
+    height: 80,
+    width: '100%',
+  },
+  lastSmallCard: {
+    marginBottom: 0,
+    height: 80,
+    width: '100%',
+  },
   skinLargeCard: {
     flex: 1,
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
-    marginRight: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
     elevation: 2,
     minHeight: 220,
+    width: '100%',
     justifyContent: 'space-between',
   },
   skinCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
   skinSubIconsContainer: {
     flexDirection: 'row',
-    marginTop: 8,
+    marginTop: 'auto',
+    alignSelf: 'flex-start',
   },
   cardTitle: {
     fontSize: 16,
@@ -370,6 +395,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginHorizontal: 20,
+    marginTop: 40,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.04,
@@ -417,5 +443,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 2,
+  },
+  centerCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullWidthColumn: {
+    flex: 1,
   },
 });

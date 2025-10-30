@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { addDoc, collection, getDownloadURL, ref, uploadBytes } from 'firebase/firestore';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     Alert,
@@ -12,7 +11,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { auth, db, storage } from '../lib/firebase';
+import { localStorageService } from '../lib/localStorage';
 import { HealthAnalysisResult, teachableMachineService } from '../lib/teachableMachine';
 
 interface ScanResultParams {
@@ -31,18 +30,25 @@ export default function ScanResultScreen() {
 
     try {
       setLoading(true);
+      console.log(`🔍 Starting analysis for body part: ${bodyPart}`);
+      console.log(`📸 Image URI: ${imageUri}`);
       
       // Use Teachable Machine for all body parts, pass bodyPart for eye-specific analysis
       const prediction = await teachableMachineService.predictFromImage(imageUri, bodyPart);
+      console.log(`✅ Prediction received:`, prediction);
+      
       const topPrediction = teachableMachineService.getTopPrediction(prediction.predictions);
+      console.log(`🎯 Top prediction:`, topPrediction);
+      
       const result = teachableMachineService.formatPredictionResult(topPrediction);
+      console.log(`📊 Formatted result:`, result);
       
       setAnalysis(result);
     } catch (error) {
       console.error('Analysis error:', error);
       Alert.alert(
         'Analysis Failed',
-        'We couldn\'t analyze your scan with Teachable Machine. Please try again with a clearer image.'
+        `We couldn't analyze your scan. Error: ${error.message}`
       );
     } finally {
       setLoading(false);
@@ -56,30 +62,19 @@ export default function ScanResultScreen() {
   const saveScan = useCallback(async () => {
     if (!analysis || !imageUri) return;
 
-    const user = auth.currentUser;
-    if (!user) {
-      Alert.alert('Error', 'Please sign in to save scans');
-      return;
-    }
-
     try {
       setSaving(true);
+      console.log('Save Scan - Starting save process to local storage');
 
-      // Upload image to Firebase Storage
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      const imageRef = ref(storage, `scans/${user.uid}/${Date.now()}.jpg`);
-      await uploadBytes(imageRef, blob);
-      const imageUrl = await getDownloadURL(imageRef);
-
-      // Save scan data to Firestore
-      await addDoc(collection(db, 'scans'), {
-        userId: user.uid,
+      // Save scan data to local storage
+      const scanData = {
         bodyPart,
-        imageUrl,
+        imageUri, // Use local file URI instead of Firebase URL
         analysis,
-        createdAt: new Date(),
-      });
+      };
+      console.log('Save Scan - Saving to local storage:', scanData);
+      const scanId = await localStorageService.saveScan(scanData);
+      console.log('Save Scan - Scan saved with ID:', scanId);
 
       Alert.alert('Success', 'Scan saved to your health log!');
     } catch (error) {
@@ -133,7 +128,7 @@ export default function ScanResultScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
           <Ionicons name="medical" size={64} color="#457B9D" />
-          <Text style={styles.loadingText}>Analyzing your scan with Teachable Machine...</Text>
+          <Text style={styles.loadingText}>Analyzing your scan...</Text>
         </View>
       </SafeAreaView>
     );
@@ -165,7 +160,9 @@ export default function ScanResultScreen() {
             <Ionicons name="arrow-back" size={24} color="#222" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Scan Results</Text>
-          <View style={styles.placeholder} />
+          <TouchableOpacity style={styles.closeButton} onPress={() => router.push('/(tabs)')}>
+            <Ionicons name="close" size={24} color="#222" />
+          </TouchableOpacity>
         </View>
 
         {/* Image */}
@@ -321,6 +318,18 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  closeButton: {
     width: 40,
     height: 40,
     backgroundColor: '#fff',

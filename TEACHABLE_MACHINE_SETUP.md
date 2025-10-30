@@ -1,12 +1,12 @@
 # Teachable Machine Integration Setup
 
-This guide explains how to integrate your Google Teachable Machine eye model with the Lumely app.
+This guide explains how to integrate your Google Teachable Machine models with the Lumely app for different body parts (skin, face, ears, eyes, and teeth).
 
 ## Prerequisites
 
-1. A trained Teachable Machine model for eye health classification
+1. Trained Teachable Machine models for the body parts you want to support (skin, face, ears, eyes, teeth)
 2. Firebase project with Storage enabled
-3. Environment variables configured
+3. Environment variables configured for each body part
 
 ## Step 1: Export Your Teachable Machine Model
 
@@ -121,20 +121,27 @@ app.listen(3000, () => {
 
 ## Step 4: Update Environment Variables
 
-Add your model URL to your `.env` file:
+Add your model URLs for each body part to your `.env` file:
 
 ```env
-EXPO_PUBLIC_TEACHABLE_MACHINE_URL=https://your-api-url.com/predict
+# Teachable Machine URLs for different body parts
+EXPO_PUBLIC_TEACHABLE_MACHINE_SKIN_URL=https://your-api-url.com/predict/skin
+EXPO_PUBLIC_TEACHABLE_MACHINE_FACE_URL=https://your-api-url.com/predict/face
+EXPO_PUBLIC_TEACHABLE_MACHINE_EARS_URL=https://your-api-url.com/predict/ears
+EXPO_PUBLIC_TEACHABLE_MACHINE_EYE_URL=https://your-api-url.com/predict/eye
+EXPO_PUBLIC_TEACHABLE_MACHINE_TEETH_URL=https://your-api-url.com/predict/teeth
 ```
+
+**Note**: You can start with just the body parts you have models for. The app will use the eye model as a fallback if no specific URL is configured for a body part.
 
 ## Step 5: Test the Integration
 
 1. Start your API server
 2. Run the app
 3. Go to the scan screen
-4. Select "Eyes"
+4. Select any body part you have configured (Eyes, Skin, Face, Ears, or Teeth)
 5. Take a photo
-6. The app should now use your Teachable Machine model for analysis
+6. The app will use the appropriate Teachable Machine model for that body part
 
 ## Troubleshooting
 

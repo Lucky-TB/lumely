@@ -37,11 +37,18 @@ function AppContent() {
           name="camera" 
           options={{ 
             presentation: 'card',
-            animation: 'slide_from_bottom',
+            animation: 'fade',
             headerShown: false,
           }} 
         />
-        <Stack.Screen name="scan-result" options={{ presentation: 'modal' }} />
+        <Stack.Screen 
+          name="scan-result" 
+          options={{ 
+            presentation: 'card',
+            animation: 'fade',
+            headerShown: false,
+          }} 
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="dark" />

@@ -28,33 +28,62 @@ interface PredictionResponse {
   predictions: Prediction[];
 }
 
-// Load your actual Teachable Machine model
-const MODEL_URL = 'https://teachablemachine.withgoogle.com/models/b2FUOfGrg/';
-let model: tf.LayersModel | null = null;
-let modelLoading = false;
+// Model URLs for different body parts - Updated to ZV8bPXq58
+const MODEL_URLS = {
+  skin: process.env.SKIN_MODEL_URL || 'https://teachablemachine.withgoogle.com/models/ZV8bPXq58/',
+  face: process.env.FACE_MODEL_URL || 'https://teachablemachine.withgoogle.com/models/ZV8bPXq58/',
+  ears: process.env.EARS_MODEL_URL || 'https://teachablemachine.withgoogle.com/models/ZV8bPXq58/',
+  eye: process.env.EYE_MODEL_URL || 'https://teachablemachine.withgoogle.com/models/ZV8bPXq58/',
+  eyes: process.env.EYE_MODEL_URL || 'https://teachablemachine.withgoogle.com/models/ZV8bPXq58/',
+  teeth: process.env.TEETH_MODEL_URL || 'https://teachablemachine.withgoogle.com/models/ZV8bPXq58/',
+};
 
-async function loadModel() {
-  if (modelLoading) return;
+// Store models for each body part
+const models: Record<string, tf.LayersModel | null> = {
+  skin: null,
+  face: null,
+  ears: null,
+  eye: null,
+  eyes: null,
+  teeth: null,
+};
+
+const modelLoading: Record<string, boolean> = {
+  skin: false,
+  face: false,
+  ears: false,
+  eye: false,
+  eyes: false,
+  teeth: false,
+};
+
+async function loadModel(bodyPart: string) {
+  const normalizedBodyPart = bodyPart?.toLowerCase() || 'eye';
+  
+  if (modelLoading[normalizedBodyPart]) return;
   
   try {
-    modelLoading = true;
-    console.log('🔄 Loading Teachable Machine model...');
-    console.log('📡 Model URL:', `${MODEL_URL}model.json`);
+    modelLoading[normalizedBodyPart] = true;
+    console.log(`🔄 Loading Teachable Machine model for ${normalizedBodyPart}...`);
+    console.log(`🔍 ALL MODEL_URLS:`, JSON.stringify(MODEL_URLS, null, 2));
     
-    model = await tf.loadLayersModel(`${MODEL_URL}model.json`);
-    console.log('✅ Teachable Machine model loaded successfully');
-    console.log('📊 Model summary:', model.summary());
+    const modelUrl = MODEL_URLS[normalizedBodyPart];
+    console.log('📡 Selected Model URL:', `${modelUrl}model.json`);
+    console.log('📡 Full model URL being loaded:', modelUrl);
+    
+    models[normalizedBodyPart] = await tf.loadLayersModel(`${modelUrl}model.json`);
+    console.log(`✅ Teachable Machine model loaded successfully for ${normalizedBodyPart}`);
+    console.log('📊 Model summary:', models[normalizedBodyPart]?.summary());
   } catch (error) {
-    console.error('❌ Error loading model:', error);
+    console.error(`❌ Error loading model for ${normalizedBodyPart}:`, error);
     console.log('⚠️ Using fallback predictions for now');
-    model = null;
+    models[normalizedBodyPart] = null;
   } finally {
-    modelLoading = false;
+    modelLoading[normalizedBodyPart] = false;
   }
 }
 
-// Load model on startup
-loadModel();
+// Models will be loaded on-demand when first requested
 
 // This function will receive image data and return predictions
 export const predictHealth = functions.https.onRequest({
@@ -85,31 +114,26 @@ export const predictHealth = functions.https.onRequest({
       return;
     }
 
-    console.log('🔍 Processing image for body part:', bodyPart);
-    console.log('📊 Model loaded status:', model !== null);
+    const normalizedBodyPart = bodyPart?.toLowerCase() || 'eye';
+    console.log('🔍 Processing image for body part:', normalizedBodyPart);
+    console.log('📊 Model loaded status:', models[normalizedBodyPart] !== null);
 
     let predictions: Prediction[];
 
-    // Try to load model if not loaded and it's an eye scan
-    if (bodyPart === 'eyes' && !model && !modelLoading) {
-      console.log('🔄 Attempting to load model for eye scan...');
-      await loadModel();
+    // Try to load model if not loaded for this body part
+    if (!models[normalizedBodyPart] && !modelLoading[normalizedBodyPart]) {
+      console.log(`🔄 Attempting to load model for ${normalizedBodyPart} scan...`);
+      await loadModel(normalizedBodyPart);
     }
 
-    // Use real Teachable Machine model for eyes, fallback for others
-    if (bodyPart === 'eyes' && model) {
-      console.log('👁️ Using real Teachable Machine model for eye analysis');
-      try {
-        predictions = await analyzeImageWithModel(image);
-        console.log('✅ Real model predictions:', predictions);
-      } catch (modelError) {
-        console.error('❌ Model prediction failed, using fallback:', modelError);
-        predictions = await analyzeImageFallback(image);
-      }
-    } else {
-      console.log('📊 Using fallback predictions for non-eye body parts or when model not available');
-      predictions = await analyzeImageFallback(image);
+    // Only use real Teachable Machine models - no fallbacks
+    if (!models[normalizedBodyPart]) {
+      throw new Error(`No model available for body part: ${normalizedBodyPart}. Please configure the model URL in environment variables.`);
     }
+
+    console.log(`🤖 Using real Teachable Machine model for ${normalizedBodyPart} analysis`);
+    predictions = await analyzeImageWithModel(image, normalizedBodyPart);
+    console.log('✅ Real model predictions:', predictions);
 
     const response: PredictionResponse = {
       predictions
@@ -124,9 +148,12 @@ export const predictHealth = functions.https.onRequest({
   }
 });
 
-async function analyzeImageWithModel(base64Image: string): Promise<Prediction[]> {
+async function analyzeImageWithModel(base64Image: string, bodyPart: string): Promise<Prediction[]> {
+  const normalizedBodyPart = bodyPart?.toLowerCase() || 'eye';
+  const model = models[normalizedBodyPart];
+  
   if (!model) {
-    throw new Error('Model not loaded');
+    throw new Error(`Model not loaded for ${normalizedBodyPart}`);
   }
 
   try {
@@ -150,7 +177,7 @@ async function analyzeImageWithModel(base64Image: string): Promise<Prediction[]>
     console.log('🚀 Making prediction with Teachable Machine model...');
     
     // Make prediction using your actual model
-    const predictions = await model.predict(normalizedTensor) as tf.Tensor;
+    const predictions = await models[normalizedBodyPart].predict(normalizedTensor) as tf.Tensor;
     const predictionArray = await predictions.array();
     
     // Clean up tensors
@@ -176,53 +203,23 @@ async function analyzeImageWithModel(base64Image: string): Promise<Prediction[]>
 }
 
 function getEyeClassLabel(index: number): string {
-  // Update these labels based on your actual Teachable Machine model classes
-  // These are the eye health classes from your model
+  // Updated with correct classes from ZV8bPXq58 model
   const labels = [
-    'healthy_eye', 
-    'dry_eye', 
-    'conjunctivitis', 
-    'cataract', 
-    'glaucoma',
-    'cornea_ulcer'
+    'Healthy',
+    'Cataract',
+    'Conjunctivitis (Pink Eye)',
+    'Uveitis',
+    'Eyelid Drooping'
   ];
   return labels[index] || `eye_class_${index}`;
 }
 
-async function analyzeImageFallback(base64Image: string): Promise<Prediction[]> {
-  // Fallback predictions for non-eye body parts
-  const imageSize = Buffer.from(base64Image, 'base64').length;
-  
-  let predictions: Prediction[];
-  
-  if (imageSize > 50000) { // Large image - might indicate detailed skin
-    predictions = [
-      { className: 'healthy_skin', probability: 0.75 },
-      { className: 'mild_irritation', probability: 0.20 },
-      { className: 'needs_attention', probability: 0.05 }
-    ];
-  } else if (imageSize > 20000) { // Medium image
-    predictions = [
-      { className: 'healthy_skin', probability: 0.60 },
-      { className: 'mild_irritation', probability: 0.30 },
-      { className: 'needs_attention', probability: 0.10 }
-    ];
-  } else { // Small image - might indicate poor quality
-    predictions = [
-      { className: 'healthy_skin', probability: 0.40 },
-      { className: 'mild_irritation', probability: 0.40 },
-      { className: 'needs_attention', probability: 0.20 }
-    ];
-  }
-
-  return predictions;
-}
 
 // Health check endpoint
 export const healthCheck = functions.https.onRequest((req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     message: 'Teachable Machine API is running',
-    modelLoaded: model !== null
+    modelLoaded: Object.values(models).some(m => m !== null)
   });
 });

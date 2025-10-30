@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Image,
@@ -12,21 +11,10 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { auth, db } from '../../lib/firebase';
+import { LocalScanData, localStorageService } from '../../lib/localStorage';
 
-interface ScanData {
-  id: string;
-  bodyPart: string;
-  imageUrl: string;
-  analysis: {
-    status: 'healthy' | 'issue_detected' | 'needs_attention';
-    condition: string;
-    confidence: number;
-    recommendations: string[];
-    urgency: 'low' | 'medium' | 'high';
-  };
-  createdAt: any;
-}
+// Use LocalScanData interface from localStorage service
+type ScanData = LocalScanData;
 
 export default function HealthLogScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -34,36 +22,32 @@ export default function HealthLogScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+    const loadScans = async () => {
+      try {
+        console.log('Health Log - Loading scans from local storage');
+        const scansData = await localStorageService.getScans();
+        console.log('Health Log - Loaded scans:', scansData.length);
+        setScans(scansData);
+      } catch (error) {
+        console.error('Health Log - Error loading scans:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const scansQuery = query(
-      collection(db, 'scans'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(scansQuery, (snapshot) => {
-      const scansData: ScanData[] = [];
-      snapshot.forEach((doc) => {
-        scansData.push({
-          id: doc.id,
-          ...doc.data(),
-        } as ScanData);
-      });
-      setScans(scansData);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    loadScans();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Data will automatically refresh via Firebase listener
-    setTimeout(() => {
+    try {
+      const scansData = await localStorageService.getScans();
+      setScans(scansData);
+    } catch (error) {
+      console.error('Health Log - Error refreshing scans:', error);
+    } finally {
       setRefreshing(false);
-    }, 1000);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -92,10 +76,9 @@ export default function HealthLogScreen() {
     }
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: Date) => {
     if (!timestamp) return 'Unknown date';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
+    return timestamp.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -138,6 +121,8 @@ export default function HealthLogScreen() {
       </SafeAreaView>
     );
   }
+
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -214,7 +199,7 @@ export default function HealthLogScreen() {
               >
                 <View style={styles.scanCardContent}>
                   <Image
-                    source={{ uri: scan.imageUrl }}
+                    source={{ uri: scan.imageUri }}
                     style={styles.scanImage}
                   />
                   <View style={styles.scanInfo}>
@@ -496,4 +481,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 12,
   },
+
+
 }); 

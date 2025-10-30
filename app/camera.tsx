@@ -1,16 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
+import LottieView from 'lottie-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 interface CameraScreenParams {
@@ -70,6 +70,21 @@ const BODY_PART_INFO_MAP: Record<string, BodyPartInfo> = {
     color: '#A8DADC',
   },
 };
+
+// Lottie Loading Component
+function LoadingAnimation() {
+  return (
+    <View style={styles.loadingContainer}>
+      <LottieView
+        source={require('../assets/animations/loading.json')}
+        autoPlay
+        loop
+        style={styles.lottieAnimation}
+      />
+      <Text style={styles.loadingText}>Preparing camera...</Text>
+    </View>
+  );
+}
 
 // Safe camera import with fallback
 function getCameraModule() {
@@ -140,6 +155,10 @@ export default function CameraScreen() {
     isLoading: false,
     cameraAvailable: false,
   });
+
+
+
+
   
   const cameraRef = useRef<any>(null);
 
@@ -226,12 +245,19 @@ export default function CameraScreen() {
     router.back();
   }, []);
 
+
+
   // Loading state
   if (state.hasPermission === null) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#457B9D" />
+          <LottieView
+            source={require('../assets/animations/loading.json')}
+            autoPlay
+            loop
+            style={styles.lottieAnimation}
+          />
           <Text style={styles.loadingText}>Requesting camera permission...</Text>
           <TouchableOpacity
             style={styles.retryButton}
@@ -292,7 +318,7 @@ export default function CameraScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       {!state.capturedImage ? (
-        <View style={styles.container}>
+          <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -335,7 +361,12 @@ export default function CameraScreen() {
               disabled={state.isLoading}
             >
               {state.isLoading ? (
-                <ActivityIndicator size="large" color="#fff" />
+                <LottieView
+                  source={require('../assets/animations/loading.json')}
+                  autoPlay
+                  loop
+                  style={{ width: 40, height: 40 }}
+                />
               ) : (
                 <View style={styles.captureButtonInner} />
               )}
@@ -596,5 +627,9 @@ const styles = StyleSheet.create({
     width: 40,
     position: 'absolute',
     right: 20,
+  },
+  lottieAnimation: {
+    width: 200,
+    height: 200,
   },
 }); 
